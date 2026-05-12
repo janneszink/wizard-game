@@ -124,3 +124,9 @@ export async function playCard(
 
   return requireGame(response)
 }
+
+export async function deleteGame(gameId: string): Promise<void> {
+  await request<ActionResponse>(`/games/${gameId}`, {
+    method: 'DELETE',
+  })
+}
