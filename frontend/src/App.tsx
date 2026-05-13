@@ -11,9 +11,13 @@ import {
 } from './api/client'
 import type { Card, GameState, GamePhase, Player, RoundScore, Suit } from './types'
 
-const DEFAULT_PLAYERS = ['Alex', 'Eva', 'Jannes']
+const DEFAULT_PLAYERS = ['', '', '']
 const PLAYER_COUNTS = [3, 4, 5, 6]
 const SUITS: Suit[] = ['red', 'blue', 'green', 'yellow']
+const CHARACTER_COLORS = ['blue', 'green', 'orange', 'purple', 'red', 'yellow'] as const
+
+type CharacterColor = (typeof CHARACTER_COLORS)[number]
+type SetupCharacterColor = CharacterColor | ''
 
 interface ScoreHistoryRound {
   roundNumber: number
@@ -86,6 +90,15 @@ function playedCardForPlayer(game: GameState, playerId: string): Card | null {
   return game.current_trick.find((playedCard) => playedCard.player_id === playerId)?.card ?? null
 }
 
+function characterImagePath(color: CharacterColor): string {
+  return `/assets/character-${color}.png`
+}
+
+function hasDuplicateCharacterColors(colors: SetupCharacterColor[]): boolean {
+  const selectedColors = colors.filter((color): color is CharacterColor => color !== '')
+  return new Set(selectedColors).size !== selectedColors.length
+}
+
 function seatVector(index: number, total: number) {
   const angle = -90 + (360 / total) * index
   const radians = (angle * Math.PI) / 180
@@ -127,8 +140,8 @@ function seatZone(index: number, total: number): SeatZone {
 
 function seatStyle(index: number, total: number): SeatCSSProperties {
   const { directionX, directionY } = seatVector(index, total)
-  const x = 50 + directionX * 42
-  const y = 50 + directionY * 41
+  const x = 50 + directionX * 35
+  const y = 50 + directionY * 42
 
   return {
     left: `${x}%`,
@@ -224,6 +237,7 @@ function PlayerSeat({
   game,
   player,
   index,
+  characterColor,
   isCurrent,
   isRevealed,
   isLoading,
@@ -233,6 +247,7 @@ function PlayerSeat({
   game: GameState
   player: Player
   index: number
+  characterColor: CharacterColor
   isCurrent: boolean
   isRevealed: boolean
   isLoading: boolean
@@ -242,6 +257,8 @@ function PlayerSeat({
   const publicPlayedCard = playedCardForPlayer(game, player.id)
   const showCardFronts = isCurrent && isRevealed
   const showPlayableCards = showCardFronts && game.phase === 'playing'
+  const handSizeClass =
+    player.hand.length >= 12 ? ' extra-compact-hand' : player.hand.length >= 7 ? ' large-hand' : ''
   const zone = seatZone(index, game.players.length)
 
   return (
@@ -249,11 +266,12 @@ function PlayerSeat({
       className={`player-place seat-${zone}${isCurrent ? ' current-place' : ''}`}
       style={seatStyle(index, game.players.length)}
     >
-      <div className="chair" aria-hidden="true">
-        <div className="avatar">
-          <span className="wizard-hat"></span>
-          <span className="avatar-face"></span>
-        </div>
+      <div className="chair">
+        <img
+          className="character-image"
+          src={characterImagePath(characterColor)}
+          alt={`${player.name} character`}
+        />
       </div>
 
       <div className={`player-seat${isCurrent ? ' current-seat' : ''}`}>
@@ -275,7 +293,10 @@ function PlayerSeat({
           </div>
         )}
 
-        <div className="seat-hand" aria-label={`${player.name}'s hand`}>
+        <div
+          className={`seat-hand${handSizeClass}`}
+          aria-label={`${player.name}'s hand`}
+        >
           {player.hand.map((card) =>
             showPlayableCards ? (
               <button
@@ -552,6 +573,10 @@ function TrumpSelectionModal({
 
 function App() {
   const [playerNames, setPlayerNames] = useState(DEFAULT_PLAYERS)
+  const [playerCharacterColors, setPlayerCharacterColors] = useState<SetupCharacterColor[]>(
+    Array.from({ length: DEFAULT_PLAYERS.length }, () => ''),
+  )
+  const [playerColorById, setPlayerColorById] = useState<Record<string, CharacterColor>>({})
   const [variantPlusMinusOne, setVariantPlusMinusOne] = useState(false)
   const [game, setGame] = useState<GameState | null>(null)
   const [predictionInput, setPredictionInput] = useState('0')
@@ -603,6 +628,12 @@ function App() {
     )
   }
 
+  function updatePlayerCharacterColor(index: number, value: SetupCharacterColor) {
+    setPlayerCharacterColors((current) =>
+      current.map((color, playerIndex) => (playerIndex === index ? value : color)),
+    )
+  }
+
   function updatePlayerCount(count: number) {
     setPlayerNames((current) => {
       if (count > current.length) {
@@ -611,11 +642,25 @@ function App() {
 
       return current.slice(0, count)
     })
+
+    setPlayerCharacterColors((current) => {
+      if (count > current.length) {
+        return [
+          ...current,
+          ...Array.from(
+            { length: count - current.length },
+            (): SetupCharacterColor => '',
+          ),
+        ]
+      }
+
+      return current.slice(0, count)
+    })
   }
 
   async function runAction(
     action: () => Promise<GameState>,
-    onSuccess?: () => void,
+    onSuccess?: (updatedGame: GameState) => void,
   ) {
     setIsLoading(true)
     setError(null)
@@ -624,7 +669,7 @@ function App() {
       const updatedGame = await action()
       setGame(updatedGame)
       setRevealedPlayerId(null)
-      onSuccess?.()
+      onSuccess?.(updatedGame)
     } catch (caughtError) {
       const message =
         caughtError instanceof Error ? caughtError.message : 'Something went wrong.'
@@ -636,13 +681,33 @@ function App() {
 
   function handleCreateGame() {
     const hasEmptyName = playerNames.some((name) => name.trim() === '')
+    const hasMissingColor = playerCharacterColors.some((color) => color === '')
+    const hasDuplicateColor = hasDuplicateCharacterColors(playerCharacterColors)
 
     if (hasEmptyName) {
       setError('Please enter a name for every player.')
       return
     }
 
-    void runAction(() => createGame(playerNames, variantPlusMinusOne), () => {
+    if (hasMissingColor) {
+      setError('Please choose a character color for every player.')
+      return
+    }
+
+    if (hasDuplicateColor) {
+      setError('Each player must choose a different character color.')
+      return
+    }
+
+    const selectedColors = playerCharacterColors as CharacterColor[]
+    const names = playerNames.map((name) => name.trim())
+
+    void runAction(() => createGame(names, variantPlusMinusOne), (createdGame) => {
+      const colorById = Object.fromEntries(
+        createdGame.players.map((player, index) => [player.id, selectedColors[index]]),
+      )
+
+      setPlayerColorById(colorById)
       setScoreHistory([])
       setIsScoreboardOpen(false)
     })
@@ -695,6 +760,7 @@ function App() {
 
   function resetGameState(message?: string) {
     setGame(null)
+    setPlayerColorById({})
     setRevealedPlayerId(null)
     setScoreHistory([])
     setIsScoreboardOpen(false)
@@ -779,7 +845,6 @@ function App() {
     return (
       <div className="seat-action">
         <strong>Play a card</strong>
-        <span>The backend validates legal play.</span>
       </div>
     )
   }
@@ -792,7 +857,12 @@ function App() {
         <section className="menu-card" aria-labelledby="setup-title">
           <div className="menu-heading">
             <p className="eyebrow">Pass-and-play digital card game</p>
-            <h1 id="setup-title">Wizard</h1>
+            <img
+              id="setup-title"
+              className="menu-logo"
+              src="/assets/wizard-logo.png"
+              alt="Wizard"
+            />
           </div>
 
           <label className="player-count">
@@ -811,17 +881,59 @@ function App() {
           </label>
 
           <div className="player-inputs">
-            {playerNames.map((name, index) => (
-              <label className="player-input" key={`player-${index + 1}`}>
-                <span>Player {index + 1}</span>
-                <input
-                  value={name}
-                  placeholder={`Player ${index + 1}`}
-                  onChange={(event) => updatePlayerName(index, event.target.value)}
-                  disabled={isLoading}
-                />
-              </label>
-            ))}
+            {playerNames.map((name, index) => {
+              const selectedColor = playerCharacterColors[index] ?? ''
+
+              return (
+                <div className="player-input" key={`player-${index + 1}`}>
+                  <span>Player {index + 1}</span>
+                  <div className="setup-player-row">
+                    <input
+                      value={name}
+                      placeholder={`Player ${index + 1}`}
+                      onChange={(event) => updatePlayerName(index, event.target.value)}
+                      disabled={isLoading}
+                      aria-label={`Player ${index + 1} name`}
+                    />
+                    <label className="character-select">
+                      <span>Character</span>
+                      <select
+                        value={selectedColor}
+                        onChange={(event) =>
+                          updatePlayerCharacterColor(
+                            index,
+                            event.target.value as SetupCharacterColor,
+                          )
+                        }
+                        disabled={isLoading}
+                        aria-label={`Player ${index + 1} character color`}
+                      >
+                        <option value="">Choose</option>
+                        {CHARACTER_COLORS.map((color) => {
+                          const isTaken = playerCharacterColors.some(
+                            (playerColor, playerIndex) =>
+                              playerIndex !== index && playerColor === color,
+                          )
+
+                          return (
+                            <option value={color} disabled={isTaken} key={color}>
+                              {formatLabel(color)}
+                            </option>
+                          )
+                        })}
+                      </select>
+                    </label>
+                    <div className="character-preview" aria-hidden="true">
+                      {selectedColor ? (
+                        <img src={characterImagePath(selectedColor)} alt="" />
+                      ) : (
+                        <span>?</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
 
           <label className="checkbox-row">
@@ -897,10 +1009,13 @@ function App() {
             />
 
             {game.players.map((player, index) => (
-              <PlayerSeat
+            <PlayerSeat
                 game={game}
                 player={player}
                 index={index}
+                characterColor={
+                  playerColorById[player.id] ?? CHARACTER_COLORS[index % CHARACTER_COLORS.length]
+                }
                 isCurrent={index === game.current_player_index}
                 isRevealed={revealedPlayerId === player.id}
                 isLoading={isLoading}
