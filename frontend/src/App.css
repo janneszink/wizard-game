@@ -10,9 +10,10 @@
   place-items: center;
   padding: 24px;
   background:
-    radial-gradient(circle at 20% 20%, rgba(255, 209, 102, 0.2), transparent 28%),
-    radial-gradient(circle at 82% 18%, rgba(150, 91, 255, 0.18), transparent 30%),
-    linear-gradient(135deg, #103d2b, #0f241d 62%, #1d1532);
+    radial-gradient(circle at 18% 22%, rgba(255, 211, 91, 0.28), transparent 27%),
+    radial-gradient(circle at 82% 16%, rgba(255, 160, 58, 0.2), transparent 30%),
+    radial-gradient(circle at 52% 92%, rgba(255, 224, 102, 0.16), transparent 34%),
+    linear-gradient(135deg, #6d171e, #3d0d17 58%, #1c1026);
 }
 
 .game-shell {
@@ -20,8 +21,10 @@
   flex-direction: column;
   padding: 12px 16px 14px;
   background:
-    radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.16), transparent 28%),
-    linear-gradient(135deg, #123326, #171b21 58%, #21172d);
+    radial-gradient(circle at 16% 18%, rgba(255, 214, 92, 0.24), transparent 24%),
+    radial-gradient(circle at 84% 22%, rgba(255, 142, 54, 0.2), transparent 27%),
+    radial-gradient(circle at 48% 72%, rgba(255, 229, 124, 0.13), transparent 34%),
+    linear-gradient(145deg, #7a1b22 0%, #4b1018 46%, #260c18 100%);
 }
 
 .menu-card {
@@ -212,21 +215,21 @@ button:disabled {
   flex: 1 1 auto;
   min-height: 680px;
   place-items: center;
-  padding: 18px 36px 12px;
+  padding: 42px min(6vw, 76px) 54px;
   box-sizing: border-box;
 }
 
 .card-table {
   position: relative;
-  width: min(100%, 1120px);
-  height: min(76vh, 780px);
-  min-height: 660px;
+  width: min(100%, 960px);
+  height: min(68vh, 660px);
+  min-height: 620px;
 }
 
 .card-table::before {
   content: '';
   position: absolute;
-  inset: 46px 70px;
+  inset: 72px 118px;
   z-index: 0;
   border: 16px solid #5b3219;
   border-radius: 50%;
@@ -251,7 +254,7 @@ button:disabled {
 .card-table::after {
   content: '';
   position: absolute;
-  inset: 62px 88px;
+  inset: 88px 136px;
   z-index: 1;
   border-radius: 50%;
   border: 1px solid rgba(255, 235, 190, 0.2);
@@ -267,7 +270,7 @@ button:disabled {
   top: 50%;
   display: grid;
   gap: 12px;
-  width: min(390px, 40%);
+  width: min(370px, 42%);
   transform: translate(-50%, -50%);
   z-index: 3;
 }
@@ -330,21 +333,36 @@ button:disabled {
 }
 
 .trump-display .card {
-  width: 78px;
-  min-height: 112px;
+  width: 68px;
+  min-height: 98px;
 }
 
 .trump-card-glow {
+  position: relative;
   display: inline-flex;
+  border-radius: 10px;
+}
+
+.trump-card-glow::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 14px;
+  background: radial-gradient(circle, rgba(255, 82, 35, 0.6), rgba(255, 133, 43, 0.25) 52%, transparent 72%);
+  filter: blur(8px);
+  pointer-events: none;
 }
 
 .center-trump-card {
-  font-size: 36px;
+  position: relative;
+  z-index: 1;
+  font-size: 42px;
   box-shadow:
     inset 0 0 0 2px rgba(255, 255, 255, 0.72),
-    0 0 0 4px rgba(255, 95, 31, 0.34),
-    0 0 24px rgba(255, 82, 24, 0.95),
-    0 0 54px rgba(255, 140, 36, 0.62);
+    0 0 0 3px rgba(255, 90, 40, 0.48),
+    0 0 14px 4px rgba(255, 58, 28, 0.96),
+    0 0 34px 10px rgba(255, 111, 34, 0.72),
+    0 0 68px 18px rgba(255, 194, 75, 0.34);
 }
 
 .no-trump-message {
@@ -385,10 +403,43 @@ button:disabled {
   left: 50%;
   top: 50%;
   z-index: 5;
+  --seat-menu-transform: translate(52px, -50%);
 }
 
 .current-place {
   z-index: 12;
+}
+
+.seat-left {
+  --seat-menu-transform: translate(52px, -50%);
+}
+
+.seat-right {
+  --seat-menu-transform: translate(calc(-100% - 52px), -50%);
+}
+
+.seat-top {
+  --seat-menu-transform: translate(56px, -54%);
+}
+
+.seat-bottom {
+  --seat-menu-transform: translate(56px, -36%);
+}
+
+.seat-top-left {
+  --seat-menu-transform: translate(50px, -48%);
+}
+
+.seat-top-right {
+  --seat-menu-transform: translate(calc(-100% - 50px), -48%);
+}
+
+.seat-bottom-left {
+  --seat-menu-transform: translate(50px, -34%);
+}
+
+.seat-bottom-right {
+  --seat-menu-transform: translate(calc(-100% - 50px), -34%);
 }
 
 .chair {
@@ -445,18 +496,18 @@ button:disabled {
 
 .avatar-face {
   position: absolute;
-  top: 18px;
-  width: 23px;
-  height: 9px;
-  border-top: 3px solid #3f2a1b;
-  border-radius: 50%;
+  top: 14px;
+  width: 25px;
+  height: 15px;
+  border-bottom: 3px solid #3f2a1b;
+  border-radius: 0 0 999px 999px;
 }
 
 .avatar-face::before,
 .avatar-face::after {
   content: '';
   position: absolute;
-  top: -9px;
+  top: 0;
   width: 4px;
   height: 4px;
   border-radius: 999px;
@@ -477,24 +528,23 @@ button:disabled {
   top: 0;
   display: grid;
   justify-items: center;
-  gap: 4px;
-  width: 154px;
-  min-height: 108px;
-  padding: 8px;
+  gap: 3px;
+  width: min(142px, 30vw);
+  max-width: 142px;
+  min-height: 98px;
+  padding: 7px;
   border: 2px solid rgba(255, 255, 255, 0.58);
   border-radius: 8px;
   background: rgba(250, 252, 246, 0.94);
   box-shadow: 0 12px 26px rgba(0, 0, 0, 0.22);
   box-sizing: border-box;
-  transform: translate(
-    calc(-50% + var(--menu-x)),
-    calc(-50% + var(--menu-y))
-  );
+  transform: var(--seat-menu-transform);
 }
 
 .current-seat {
-  width: 292px;
-  min-height: 190px;
+  width: min(252px, 42vw);
+  max-width: 252px;
+  min-height: 168px;
   border-width: 3px;
   border-color: #ffe066;
   background: #fff8d8;
@@ -502,22 +552,18 @@ button:disabled {
     0 0 0 6px rgba(255, 224, 102, 0.36),
     0 0 42px rgba(255, 224, 102, 0.62),
     0 18px 36px rgba(0, 0, 0, 0.32);
-  transform: translate(
-      calc(-50% + var(--menu-x)),
-      calc(-50% + var(--menu-y))
-    )
-    scale(1.04);
+  transform: var(--seat-menu-transform) scale(1.04);
 }
 
 .current-turn-badge {
   position: absolute;
-  top: -28px;
+  top: -25px;
   left: 50%;
   transform: translateX(-50%);
   border-radius: 999px;
   background: #ffd23f;
   color: #2a2100;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 900;
   padding: 5px 11px;
   white-space: nowrap;
@@ -532,7 +578,7 @@ button:disabled {
   color: #3f2f00;
   font-size: 11px;
   font-weight: 900;
-  padding: 3px 8px;
+  padding: 2px 7px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -541,7 +587,7 @@ button:disabled {
 .seat-name {
   max-width: 100%;
   color: #10150f;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 900;
   line-height: 1.15;
   overflow-wrap: anywhere;
@@ -549,14 +595,14 @@ button:disabled {
 }
 
 .current-seat .seat-name {
-  font-size: 20px;
+  font-size: 18px;
 }
 
 .seat-meta {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 6px;
+  gap: 5px;
   color: #4d594a;
   font-size: 11px;
   font-weight: 800;
@@ -578,19 +624,19 @@ button:disabled {
 
 .seat-hand {
   justify-content: center;
-  max-height: 86px;
+  max-height: 76px;
   overflow: hidden;
   width: 100%;
 }
 
 .current-seat .seat-hand {
-  max-height: 240px;
+  max-height: 210px;
   overflow: visible;
 }
 
 .seat-hand .card,
 .seat-hand .card-button {
-  margin-left: -28px;
+  margin-left: -30px;
 }
 
 .seat-hand .card:first-child,
@@ -607,12 +653,12 @@ button:disabled {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 50px;
-  min-height: 74px;
+  width: 46px;
+  min-height: 68px;
   border: 2px solid var(--border);
   border-radius: 8px;
   box-sizing: border-box;
-  font-size: 20px;
+  font-size: 19px;
   font-weight: 900;
   line-height: 1.1;
   padding: 6px;
@@ -623,8 +669,8 @@ button:disabled {
 .current-seat .card,
 .trick-list .card,
 .seat-played-card .card {
-  width: 58px;
-  min-height: 86px;
+  width: 54px;
+  min-height: 80px;
 }
 
 .card-front {
@@ -692,7 +738,7 @@ button:disabled {
 
 .center-trump-card.card-wizard,
 .center-trump-card.card-jester {
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .center-trump-card.card-wizard.wizard-trump-red {
@@ -742,11 +788,11 @@ button:disabled {
 
 .seat-action {
   display: grid;
-  gap: 9px;
+  gap: 7px;
   width: 100%;
-  margin-top: 6px;
+  margin-top: 4px;
   border-top: 1px solid rgba(63, 47, 0, 0.18);
-  padding-top: 9px;
+  padding-top: 7px;
   text-align: center;
 }
 
@@ -1038,12 +1084,12 @@ tbody tr:last-child td {
 @media (max-width: 1000px) {
   .table-stage {
     min-height: 720px;
-    padding-inline: 18px;
+    padding: 36px 42px 48px;
   }
 
   .card-table {
-    height: 720px;
-    min-height: 720px;
+    height: 680px;
+    min-height: 680px;
   }
 }
 
@@ -1079,34 +1125,64 @@ tbody tr:last-child td {
 
   .table-stage {
     min-height: 820px;
-    padding: 8px;
+    padding: 8px 0 18px;
   }
 
   .card-table {
-    height: 820px;
-    min-height: 820px;
+    width: min(100%, 620px);
+    height: 760px;
+    min-height: 760px;
   }
 
   .card-table::before {
-    inset: 86px 16px;
+    inset: 118px 48px;
     border-radius: 46px;
   }
 
   .card-table::after {
-    inset: 104px 34px;
+    inset: 136px 64px;
     border-radius: 34px;
   }
 
   .table-center {
-    width: min(330px, 82%);
+    width: min(300px, 74%);
+    gap: 8px;
+  }
+
+  .center-status,
+  .current-trick {
+    padding: 9px;
   }
 
   .player-seat {
-    width: 134px;
+    width: min(128px, 35vw);
+    padding: 6px;
   }
 
   .current-seat {
-    width: 260px;
+    width: min(238px, 62vw);
+    min-height: 154px;
+  }
+
+  .chair {
+    transform: translate(-50%, -50%) scale(0.88);
+  }
+
+  .seat-name {
+    font-size: 13px;
+  }
+
+  .current-seat .seat-name {
+    font-size: 16px;
+  }
+
+  .seat-meta,
+  .prediction-badge {
+    font-size: 10px;
+  }
+
+  .current-seat .seat-hand {
+    max-height: 184px;
   }
 
   .table-result-panel {

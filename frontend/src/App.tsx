@@ -21,9 +21,19 @@ interface ScoreHistoryRound {
 }
 
 type SeatCSSProperties = CSSProperties & {
-  '--menu-x': string
-  '--menu-y': string
+  '--seat-x': string
+  '--seat-y': string
 }
+
+type SeatZone =
+  | 'top'
+  | 'bottom'
+  | 'left'
+  | 'right'
+  | 'top-left'
+  | 'top-right'
+  | 'bottom-left'
+  | 'bottom-right'
 
 function formatLabel(value: string): string {
   return value
@@ -76,30 +86,55 @@ function playedCardForPlayer(game: GameState, playerId: string): Card | null {
   return game.current_trick.find((playedCard) => playedCard.player_id === playerId)?.card ?? null
 }
 
-function seatStyle(index: number, total: number): SeatCSSProperties {
+function seatVector(index: number, total: number) {
   const angle = -90 + (360 / total) * index
   const radians = (angle * Math.PI) / 180
-  const x = 50 + Math.cos(radians) * 47
-  const y = 50 + Math.sin(radians) * 44
-  const directionX = Math.cos(radians)
-  const directionY = Math.sin(radians)
+  return {
+    directionX: Math.cos(radians),
+    directionY: Math.sin(radians),
+  }
+}
 
-  let menuX = directionX * 128
-  let menuY = directionY * 112
+function seatZone(index: number, total: number): SeatZone {
+  const { directionX, directionY } = seatVector(index, total)
 
   if (directionY < -0.72) {
-    menuY = 84
+    if (directionX < -0.28) {
+      return 'top-left'
+    }
+
+    if (directionX > 0.28) {
+      return 'top-right'
+    }
+
+    return 'top'
   }
 
   if (directionY > 0.72) {
-    menuY = -88
+    if (directionX < -0.28) {
+      return 'bottom-left'
+    }
+
+    if (directionX > 0.28) {
+      return 'bottom-right'
+    }
+
+    return 'bottom'
   }
+
+  return directionX < 0 ? 'left' : 'right'
+}
+
+function seatStyle(index: number, total: number): SeatCSSProperties {
+  const { directionX, directionY } = seatVector(index, total)
+  const x = 50 + directionX * 42
+  const y = 50 + directionY * 41
 
   return {
     left: `${x}%`,
     top: `${y}%`,
-    '--menu-x': `${menuX}px`,
-    '--menu-y': `${menuY}px`,
+    '--seat-x': directionX.toFixed(3),
+    '--seat-y': directionY.toFixed(3),
   }
 }
 
@@ -207,10 +242,11 @@ function PlayerSeat({
   const publicPlayedCard = playedCardForPlayer(game, player.id)
   const showCardFronts = isCurrent && isRevealed
   const showPlayableCards = showCardFronts && game.phase === 'playing'
+  const zone = seatZone(index, game.players.length)
 
   return (
     <div
-      className={`player-place${isCurrent ? ' current-place' : ''}`}
+      className={`player-place seat-${zone}${isCurrent ? ' current-place' : ''}`}
       style={seatStyle(index, game.players.length)}
     >
       <div className="chair" aria-hidden="true">
