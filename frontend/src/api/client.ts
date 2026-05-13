@@ -1,4 +1,4 @@
-import type { GameState, Suit } from '../types'
+import type { GameState, SavedGame, SavedGameSummary, Suit } from '../types'
 
 const API_BASE_URL = 'http://127.0.0.1:8000'
 
@@ -11,6 +11,11 @@ interface ActionResponse {
   success: boolean
   message: string
   game: GameState | null
+}
+
+interface SavedGameResponse {
+  success: boolean
+  saved_game: SavedGame
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -127,6 +132,39 @@ export async function playCard(
 
 export async function deleteGame(gameId: string): Promise<void> {
   await request<ActionResponse>(`/games/${gameId}`, {
+    method: 'DELETE',
+  })
+}
+
+export async function saveGame(
+  gameId: string,
+  name: string,
+  playerColors: Record<string, string>,
+  scoreHistory: unknown[],
+): Promise<SavedGame> {
+  const response = await request<SavedGameResponse>(`/games/${gameId}/save`, {
+    method: 'POST',
+    body: JSON.stringify({
+      name,
+      player_colors: playerColors,
+      score_history: scoreHistory,
+    }),
+  })
+
+  return response.saved_game
+}
+
+export async function listSavedGames(): Promise<SavedGameSummary[]> {
+  return request<SavedGameSummary[]>('/saved-games')
+}
+
+export async function loadSavedGame(gameId: string): Promise<SavedGame> {
+  const response = await request<SavedGameResponse>(`/saved-games/${gameId}`)
+  return response.saved_game
+}
+
+export async function deleteSavedGame(gameId: string): Promise<void> {
+  await request<ActionResponse>(`/saved-games/${gameId}`, {
     method: 'DELETE',
   })
 }

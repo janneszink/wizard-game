@@ -57,3 +57,23 @@ export interface GameState {
   round_scores: RoundScore[]
   log: string[]
 }
+
+export interface SavedGameSummary {
+  id: string
+  name: string
+  player_names: string[]
+  round_number: number
+  phase: GamePhase
+  created_at: string
+  updated_at: string
+}
+
+export interface SavedGame {
+  id: string
+  name: string
+  game: GameState
+  player_colors: Record<string, string>
+  score_history: unknown[]
+  created_at: string
+  updated_at: string
+}
