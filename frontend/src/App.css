@@ -20,6 +20,7 @@
 }
 
 .menu-shell {
+  position: relative;
   display: grid;
   place-items: center;
   padding: 24px;
@@ -43,6 +44,12 @@
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
+}
+
+.game-over-shell {
+  display: grid;
+  place-items: center;
+  padding: 32px;
 }
 
 .menu-card {
@@ -247,6 +254,17 @@ button:disabled {
   margin-top: 22px;
   min-height: 48px;
   font-size: 18px;
+}
+
+.instructions-button {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 10;
+  width: auto;
+  min-height: 36px;
+  margin: 0;
+  padding: 7px 14px;
 }
 
 .dashboard {
@@ -1091,7 +1109,8 @@ button:disabled {
 }
 
 .trump-modal-backdrop,
-.scoreboard-backdrop {
+.scoreboard-backdrop,
+.instructions-backdrop {
   position: fixed;
   inset: 0;
   z-index: 80;
@@ -1105,7 +1124,8 @@ button:disabled {
 }
 
 .trump-modal,
-.scoreboard-panel {
+.scoreboard-panel,
+.instructions-panel {
   width: min(720px, 100%);
   max-height: min(88vh, 760px);
   overflow: auto;
@@ -1127,8 +1147,90 @@ button:disabled {
 }
 
 .trump-modal h2,
-.scoreboard-panel h2 {
+.scoreboard-panel h2,
+.instructions-panel h2 {
   margin: 0;
+}
+
+.instructions-panel {
+  width: min(820px, 100%);
+}
+
+.instructions-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.instructions-content {
+  display: grid;
+  gap: 14px;
+  max-height: min(58vh, 520px);
+  overflow: auto;
+  padding-right: 6px;
+}
+
+.rule-section {
+  border: 1px solid rgba(93, 53, 18, 0.34);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255, 248, 213, 0.42), transparent 26%),
+    rgba(255, 239, 190, 0.48);
+  box-shadow: inset 0 1px 0 rgba(255, 248, 211, 0.44);
+  color: var(--ink);
+  padding: 14px;
+}
+
+.rule-section h3,
+.rule-section h4 {
+  color: #2d1707;
+  font-family: Georgia, serif;
+  margin: 0 0 8px;
+}
+
+.rule-section h4 {
+  margin-top: 12px;
+}
+
+.rule-section p,
+.rule-section li {
+  color: #4f2d13;
+}
+
+.rule-section p {
+  margin: 0 0 10px;
+}
+
+.rule-section p:last-child {
+  margin-bottom: 0;
+}
+
+.rule-section ul,
+.rule-section ol {
+  margin: 8px 0 12px;
+  padding-left: 24px;
+}
+
+.pdf-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 18px;
+  border: 1px solid #5e3518;
+  border-radius: 7px;
+  background:
+    linear-gradient(180deg, #ffe28d, #c78122 52%, #7c3215);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 246, 192, 0.74),
+    0 8px 18px rgba(86, 36, 10, 0.3);
+  color: #241105;
+  font-weight: 900;
+  text-decoration: none;
+  text-shadow: 0 1px 0 rgba(255, 239, 175, 0.5);
 }
 
 .trump-modal h2 span {
@@ -1280,6 +1382,158 @@ button:disabled {
   padding: 18px;
 }
 
+.final-results-screen {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: calc(100vh - 64px);
+}
+
+.final-results-screen .table-result-panel {
+  position: static;
+  transform: none;
+}
+
+.game-over-panel {
+  width: min(860px, 100%);
+  max-height: min(90vh, 820px);
+  overflow: auto;
+}
+
+.winner-podium {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.podium-card {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: end;
+  min-height: 178px;
+  border: 2px solid rgba(93, 53, 18, 0.5);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 8%, rgba(255, 246, 203, 0.72), transparent 30%),
+    linear-gradient(180deg, rgba(255, 239, 178, 0.9), rgba(201, 143, 50, 0.86));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 211, 0.55),
+    0 14px 28px rgba(45, 19, 6, 0.24);
+  color: var(--ink);
+  gap: 4px;
+  padding: 12px;
+  text-align: center;
+}
+
+.podium-rank-1 {
+  min-height: 218px;
+  border-color: #d9a83d;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 211, 0.7),
+    0 0 30px rgba(255, 196, 55, 0.42),
+    0 18px 34px rgba(45, 19, 6, 0.3);
+  transform: translateY(-10px);
+}
+
+.podium-rank-2 {
+  min-height: 196px;
+}
+
+.podium-character {
+  width: auto;
+  height: 96px;
+  object-fit: contain;
+  filter: drop-shadow(0 7px 8px rgba(29, 13, 5, 0.32));
+}
+
+.podium-rank-1 .podium-character {
+  height: 122px;
+}
+
+.winner-crown {
+  position: absolute;
+  top: -32px;
+  width: 70px;
+  height: auto;
+  filter:
+    drop-shadow(0 5px 6px rgba(29, 13, 5, 0.34))
+    drop-shadow(0 0 10px rgba(255, 218, 105, 0.46));
+}
+
+.podium-rank {
+  border: 1px solid rgba(93, 53, 18, 0.45);
+  border-radius: 999px;
+  background: rgba(255, 239, 178, 0.8);
+  color: #3a1c09;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 4px 8px;
+}
+
+.podium-card strong {
+  color: #251505;
+  font-family: Georgia, serif;
+  font-size: 18px;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.podium-card > span:last-child {
+  color: #5b3615;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.final-leaderboard {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: auto 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(93, 53, 18, 0.34);
+  border-radius: 8px;
+  background: rgba(255, 239, 190, 0.58);
+  color: var(--ink);
+  padding: 7px 10px;
+}
+
+.leaderboard-rank {
+  color: #6b4119;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.leaderboard-character {
+  width: auto;
+  height: 34px;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 4px rgba(29, 13, 5, 0.24));
+}
+
+.leaderboard-row strong {
+  overflow-wrap: anywhere;
+}
+
+.leaderboard-row > span:last-child {
+  color: #5b3615;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.back-to-menu-button {
+  width: 100%;
+  margin-top: 16px;
+}
+
 .section-heading {
   margin-bottom: 14px;
 }
@@ -1369,6 +1623,13 @@ tbody tr:last-child td {
 
   .menu-card {
     padding: 22px;
+  }
+
+  .instructions-button {
+    top: 10px;
+    right: 10px;
+    min-height: 32px;
+    padding: 5px 10px;
   }
 
   .menu-logo {
@@ -1503,6 +1764,57 @@ tbody tr:last-child td {
 
   .table-result-panel {
     width: min(520px, 88%);
+  }
+
+  .game-over-panel {
+    width: min(520px, 92%);
+  }
+
+  .game-over-shell {
+    padding: 16px;
+  }
+
+  .final-results-screen {
+    min-height: calc(100vh - 32px);
+  }
+
+  .winner-podium {
+    gap: 8px;
+  }
+
+  .podium-card {
+    min-height: 150px;
+    padding: 9px;
+  }
+
+  .podium-rank-1 {
+    min-height: 178px;
+  }
+
+  .podium-rank-2 {
+    min-height: 162px;
+  }
+
+  .podium-character {
+    height: 72px;
+  }
+
+  .podium-rank-1 .podium-character {
+    height: 92px;
+  }
+
+  .winner-crown {
+    top: -24px;
+    width: 54px;
+  }
+
+  .podium-card strong {
+    font-size: 14px;
+  }
+
+  .leaderboard-row {
+    grid-template-columns: auto 30px minmax(0, 1fr) auto;
+    gap: 8px;
   }
 
   .scoring-heading,

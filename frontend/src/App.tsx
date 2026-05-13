@@ -376,10 +376,14 @@ function CenterResultPanel({
   game,
   isLoading,
   onNextRound,
+  onBackToMenu,
+  playerColorById,
 }: {
   game: GameState
   isLoading: boolean
   onNextRound: () => void
+  onBackToMenu: () => void
+  playerColorById: Record<string, CharacterColor>
 }) {
   if (game.phase === 'round_scoring') {
     return (
@@ -405,9 +409,18 @@ function CenterResultPanel({
 
   if (game.phase === 'game_over') {
     const winners = finalWinners(game)
+    const rankedPlayers = [...game.players].sort((leftPlayer, rightPlayer) => {
+      if (rightPlayer.score !== leftPlayer.score) {
+        return rightPlayer.score - leftPlayer.score
+      }
+
+      return leftPlayer.name.localeCompare(rightPlayer.name)
+    })
+    const podiumPlayers = rankedPlayers.slice(0, 3)
+    const remainingPlayers = rankedPlayers.slice(3)
 
     return (
-      <div className="table-result-panel">
+      <div className="table-result-panel game-over-panel">
         <div className="section-heading">
           <h2>Game Over</h2>
           <p>
@@ -415,7 +428,63 @@ function CenterResultPanel({
             {winners.map((winner) => winner.name).join(', ')}
           </p>
         </div>
-        <ScoreTable game={game} />
+        <div className="winner-podium" aria-label="Top three players">
+          {podiumPlayers.map((player, index) => {
+            const rank = index + 1
+            const characterColor = playerColorById[player.id]
+
+            return (
+              <div className={`podium-card podium-rank-${rank}`} key={player.id}>
+                {rank === 1 && (
+                  <img className="winner-crown" src="/assets/crown.png" alt="" />
+                )}
+                {characterColor && (
+                  <img
+                    className="podium-character"
+                    src={characterImagePath(characterColor)}
+                    alt={`${player.name} character`}
+                  />
+                )}
+                <span className="podium-rank">#{rank}</span>
+                <strong>{player.name}</strong>
+                <span>{player.score} points</span>
+              </div>
+            )
+          })}
+        </div>
+
+        {remainingPlayers.length > 0 && (
+          <div className="final-leaderboard" aria-label="Remaining player standings">
+            {remainingPlayers.map((player, index) => {
+              const rank = index + 4
+              const characterColor = playerColorById[player.id]
+
+              return (
+                <div className="leaderboard-row" key={player.id}>
+                  <span className="leaderboard-rank">#{rank}</span>
+                  {characterColor && (
+                    <img
+                      className="leaderboard-character"
+                      src={characterImagePath(characterColor)}
+                      alt={`${player.name} character`}
+                    />
+                  )}
+                  <strong>{player.name}</strong>
+                  <span>{player.score} points</span>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        <button
+          type="button"
+          className="primary-button back-to-menu-button"
+          onClick={onBackToMenu}
+          disabled={isLoading}
+        >
+          {isLoading ? 'Returning...' : 'Back to Menu'}
+        </button>
       </div>
     )
   }
@@ -571,6 +640,186 @@ function TrumpSelectionModal({
   )
 }
 
+function InstructionsModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="instructions-backdrop" role="dialog" aria-modal="true" aria-labelledby="instructions-title">
+      <div className="instructions-panel">
+        <div className="instructions-heading">
+          <div>
+            <p className="eyebrow">Instructions</p>
+            <h2 id="instructions-title">How to Play Wizard</h2>
+          </div>
+          <button type="button" className="secondary-button" onClick={onClose}>
+            Close
+          </button>
+        </div>
+
+        <div className="instructions-content">
+          <section className="rule-section">
+            <h3>Objective</h3>
+            <p>
+              Wizard is a trick-taking card game. Each player is an apprentice trying to
+              predict exactly how many tricks they will win in each round. Correct
+              predictions earn points. The player with the most points at the end of the
+              final round wins.
+            </p>
+          </section>
+
+          <section className="rule-section">
+            <h3>Round Flow</h3>
+            <p>Each round has four phases:</p>
+            <h4>1. Dealing Cards</h4>
+            <p>
+              Each player receives cards equal to the round number. In round 1, each player
+              receives 1 card. In round 2, each player receives 2 cards, and so on.
+            </p>
+            <h4>2. Determining Trump</h4>
+            <p>After dealing, one card is revealed from the remaining deck.</p>
+            <ul>
+              <li>If the revealed card is a number card, its color becomes trump.</li>
+              <li>If the revealed card is a Wizard, the dealer chooses the trump color.</li>
+              <li>If the revealed card is a Jester, there is no trump color.</li>
+              <li>In the final round, there is no trump because all cards are dealt.</li>
+            </ul>
+            <h4>3. Predicting Tricks</h4>
+            <p>
+              Players look at their cards and predict how many tricks they think they will
+              win that round. Predictions are public and remain visible during the round.
+            </p>
+            <h4>4. Playing Tricks</h4>
+            <p>
+              Players take turns playing one card each. The cards played together form one
+              trick.
+            </p>
+          </section>
+
+          <section className="rule-section">
+            <h3>Playing Cards</h3>
+            <p>The first player in a trick may play any card.</p>
+            <p>
+              After the first card is played, other players must follow the first color
+              played if they can. For example, if the first colored card is blue, players
+              with blue cards must play blue.
+            </p>
+            <p>
+              A player may only play a different color or a trump card if they do not have
+              the required color.
+            </p>
+            <p>
+              Wizards and Jesters are special. They can be played at any time, even if the
+              player could follow suit.
+            </p>
+          </section>
+
+          <section className="rule-section">
+            <h3>Winning a Trick</h3>
+            <p>A trick is won according to these rules:</p>
+            <ol>
+              <li>The first Wizard played wins the trick.</li>
+              <li>If no Wizard is played, the highest card in the trump color wins.</li>
+              <li>
+                If there is no Wizard and no trump card, the highest card in the first
+                played color wins.
+              </li>
+              <li>If only Jesters are played, the first Jester wins.</li>
+            </ol>
+            <p>The winner of a trick starts the next trick.</p>
+          </section>
+
+          <section className="rule-section">
+            <h3>Wizards</h3>
+            <p>
+              A Wizard can be played at any time. If a Wizard is played, the first Wizard in
+              the trick wins.
+            </p>
+            <p>If a Wizard is the first card of a trick, the other players may play any card.</p>
+          </section>
+
+          <section className="rule-section">
+            <h3>Jesters</h3>
+            <p>A Jester can be played at any time. Jesters usually lose.</p>
+            <p>
+              If a Jester is the first card of a trick, the next colored number card
+              determines the color that must be followed. If only Jesters are played, the
+              first Jester wins.
+            </p>
+          </section>
+
+          <section className="rule-section">
+            <h3>Scoring</h3>
+            <p>At the end of each round, scores are calculated.</p>
+            <p><strong>If your prediction was correct:</strong></p>
+            <p>You score 20 points plus 10 points for each trick you won.</p>
+            <p><strong>Example:</strong></p>
+            <p>Prediction: 2 tricks<br />Tricks won: 2<br />Score: 20 + 10 + 10 = 40 points</p>
+            <p><strong>If your prediction was wrong:</strong></p>
+            <p>
+              You lose 10 points for each trick difference between your prediction and your
+              actual tricks won.
+            </p>
+            <p><strong>Example:</strong></p>
+            <p>Prediction: 2 tricks<br />Tricks won: 1<br />Score: -10 points</p>
+          </section>
+
+          <section className="rule-section">
+            <h3>End of the Game</h3>
+            <p>The game ends after the final round.</p>
+            <p>Number of rounds:</p>
+            <ul>
+              <li>3 players: 20 rounds</li>
+              <li>4 players: 15 rounds</li>
+              <li>5 players: 12 rounds</li>
+              <li>6 players: 10 rounds</li>
+            </ul>
+            <p>
+              The player with the highest total score wins. If multiple players share the
+              highest score, they all win.
+            </p>
+          </section>
+
+          <section className="rule-section">
+            <h3>Plus/Minus One Variant</h3>
+            <p>
+              When this variant is enabled, the total number of predicted tricks may not
+              equal the number of tricks available in the round.
+            </p>
+            <p><strong>Example:</strong></p>
+            <p>
+              In round 5, there are 5 tricks available. The total of all predictions cannot
+              be exactly 5. It must be higher or lower.
+            </p>
+          </section>
+
+          <section className="rule-section">
+            <h3>Pass-and-Play Mode</h3>
+            <p>This digital version is designed for one shared device.</p>
+            <p>When it is your turn:</p>
+            <ol>
+              <li>Take the device.</li>
+              <li>Tap “Reveal cards.”</li>
+              <li>Make your prediction or play your card.</li>
+              <li>Pass the device to the next player.</li>
+            </ol>
+            <p>
+              Only the current player can reveal their hand. Predictions, played cards,
+              scores, trump, and the current trick are public information.
+            </p>
+          </section>
+        </div>
+
+        <a
+          className="pdf-button"
+          href="/assets/wizard-rules.pdf"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Open Full Rulebook PDF
+        </a>
+      </div>
+    </div>
+  )
+}
+
 function App() {
   const [playerNames, setPlayerNames] = useState(DEFAULT_PLAYERS)
   const [playerCharacterColors, setPlayerCharacterColors] = useState<SetupCharacterColor[]>(
@@ -583,6 +832,7 @@ function App() {
   const [revealedPlayerId, setRevealedPlayerId] = useState<string | null>(null)
   const [scoreHistory, setScoreHistory] = useState<ScoreHistoryRound[]>([])
   const [isScoreboardOpen, setIsScoreboardOpen] = useState(false)
+  const [isInstructionsOpen, setIsInstructionsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -775,6 +1025,7 @@ function App() {
     }
 
     const gameId = game.id
+
     setIsLoading(true)
     setError(null)
 
@@ -853,6 +1104,14 @@ function App() {
     return (
       <main className="app-shell menu-shell">
         {error && <div className="error-toast" role="alert">{error}</div>}
+
+        <button
+          type="button"
+          className="secondary-button instructions-button"
+          onClick={() => setIsInstructionsOpen(true)}
+        >
+          Instructions
+        </button>
 
         <section className="menu-card" aria-labelledby="setup-title">
           <div className="menu-heading">
@@ -955,6 +1214,28 @@ function App() {
             {isLoading ? 'Starting...' : 'Start Game'}
           </button>
         </section>
+
+        {isInstructionsOpen && (
+          <InstructionsModal onClose={() => setIsInstructionsOpen(false)} />
+        )}
+      </main>
+    )
+  }
+
+  if (game.phase === 'game_over') {
+    return (
+      <main className="app-shell game-shell game-over-shell">
+        {error && <div className="error-toast" role="alert">{error}</div>}
+
+        <section className="final-results-screen" aria-label="Final game results">
+          <CenterResultPanel
+            game={game}
+            isLoading={isLoading}
+            onNextRound={handleNextRound}
+            onBackToMenu={handleEndGame}
+            playerColorById={playerColorById}
+          />
+        </section>
       </main>
     )
   }
@@ -1006,6 +1287,8 @@ function App() {
               game={game}
               isLoading={isLoading}
               onNextRound={handleNextRound}
+              onBackToMenu={handleEndGame}
+              playerColorById={playerColorById}
             />
 
             {game.players.map((player, index) => (

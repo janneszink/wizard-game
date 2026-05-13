@@ -15,3 +15,6 @@ __pycache__/
 node_modules/
 dist/
 build/
+
+# Local saved game data
+backend/data/saved_games.json
