@@ -4,12 +4,24 @@ import {
   chooseTrump,
   createGame,
   deleteGame,
+  deleteSavedGame,
+  listSavedGames,
+  loadSavedGame,
   nextRound,
   playCard,
+  saveGame,
   startRound,
   submitPrediction,
 } from './api/client'
-import type { Card, GameState, GamePhase, Player, RoundScore, Suit } from './types'
+import type {
+  Card,
+  GameState,
+  GamePhase,
+  Player,
+  RoundScore,
+  SavedGameSummary,
+  Suit,
+} from './types'
 
 const DEFAULT_PLAYERS = ['', '', '']
 const PLAYER_COUNTS = [3, 4, 5, 6]
@@ -94,9 +106,31 @@ function characterImagePath(color: CharacterColor): string {
   return `/assets/character-${color}.png`
 }
 
+function isCharacterColor(color: string): color is CharacterColor {
+  return (CHARACTER_COLORS as readonly string[]).includes(color)
+}
+
+function normalizePlayerColors(colors: Record<string, string>): Record<string, CharacterColor> {
+  return Object.fromEntries(
+    Object.entries(colors).filter((entry): entry is [string, CharacterColor] =>
+      isCharacterColor(entry[1]),
+    ),
+  )
+}
+
 function hasDuplicateCharacterColors(colors: SetupCharacterColor[]): boolean {
   const selectedColors = colors.filter((color): color is CharacterColor => color !== '')
   return new Set(selectedColors).size !== selectedColors.length
+}
+
+function formatSavedTimestamp(timestamp: string): string {
+  const date = new Date(timestamp)
+
+  if (Number.isNaN(date.getTime())) {
+    return timestamp
+  }
+
+  return date.toLocaleString()
 }
 
 function seatVector(index: number, total: number) {
@@ -820,6 +854,105 @@ function InstructionsModal({ onClose }: { onClose: () => void }) {
   )
 }
 
+function SavedGamesModal({
+  savedGames,
+  isLoading,
+  resumingSavedGameId,
+  deletingSavedGameId,
+  onClose,
+  onRefresh,
+  onResume,
+  onDelete,
+}: {
+  savedGames: SavedGameSummary[]
+  isLoading: boolean
+  resumingSavedGameId: string | null
+  deletingSavedGameId: string | null
+  onClose: () => void
+  onRefresh: () => void
+  onResume: (gameId: string) => void
+  onDelete: (gameId: string) => void
+}) {
+  return (
+    <div className="saved-games-backdrop" role="dialog" aria-modal="true" aria-labelledby="saved-games-title">
+      <div className="saved-games-panel">
+        <div className="saved-games-heading">
+          <div>
+            <p className="eyebrow">Archive</p>
+            <h2 id="saved-games-title">Saved Games</h2>
+          </div>
+          <div className="saved-games-heading-actions">
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={onRefresh}
+              disabled={isLoading}
+            >
+              Refresh
+            </button>
+            <button type="button" className="secondary-button" onClick={onClose}>
+              Close
+            </button>
+          </div>
+        </div>
+
+        <div className="saved-games-content">
+          {isLoading ? (
+            <div className="saved-games-empty">Loading saved games...</div>
+          ) : savedGames.length === 0 ? (
+            <div className="saved-games-empty">No saved games yet.</div>
+          ) : (
+            savedGames.map((savedGame) => {
+              const isResuming = resumingSavedGameId === savedGame.id
+              const isDeleting = deletingSavedGameId === savedGame.id
+
+              return (
+                <article className="saved-game-card" key={savedGame.id}>
+                  <div className="saved-game-card-heading">
+                    <h3>{savedGame.name}</h3>
+                    <span>{formatSavedTimestamp(savedGame.updated_at)}</span>
+                  </div>
+                  <p className="saved-game-players">
+                    {savedGame.player_names.join(', ')}
+                  </p>
+                  <div className="saved-game-meta">
+                    <span>
+                      <strong>Round</strong>
+                      {savedGame.round_number}
+                    </span>
+                    <span>
+                      <strong>Phase</strong>
+                      {formatLabel(savedGame.phase)}
+                    </span>
+                  </div>
+                  <div className="saved-game-actions">
+                    <button
+                      type="button"
+                      className="primary-button"
+                      onClick={() => onResume(savedGame.id)}
+                      disabled={isLoading || Boolean(resumingSavedGameId) || isDeleting}
+                    >
+                      {isResuming ? 'Resuming...' : 'Resume'}
+                    </button>
+                    <button
+                      type="button"
+                      className="delete-saved-game-button"
+                      onClick={() => onDelete(savedGame.id)}
+                      disabled={isLoading || Boolean(deletingSavedGameId) || isResuming}
+                    >
+                      {isDeleting ? 'Deleting...' : 'Delete'}
+                    </button>
+                  </div>
+                </article>
+              )
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function App() {
   const [playerNames, setPlayerNames] = useState(DEFAULT_PLAYERS)
   const [playerCharacterColors, setPlayerCharacterColors] = useState<SetupCharacterColor[]>(
@@ -833,7 +966,15 @@ function App() {
   const [scoreHistory, setScoreHistory] = useState<ScoreHistoryRound[]>([])
   const [isScoreboardOpen, setIsScoreboardOpen] = useState(false)
   const [isInstructionsOpen, setIsInstructionsOpen] = useState(false)
+  const [isSavedGamesOpen, setIsSavedGamesOpen] = useState(false)
+  const [savedGames, setSavedGames] = useState<SavedGameSummary[]>([])
+  const [saveName, setSaveName] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isLoadingSavedGames, setIsLoadingSavedGames] = useState(false)
+  const [resumingSavedGameId, setResumingSavedGameId] = useState<string | null>(null)
+  const [deletingSavedGameId, setDeletingSavedGameId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const activePlayer = game ? currentPlayer(game) : null
@@ -847,6 +988,15 @@ function App() {
     const timeoutId = window.setTimeout(() => setError(null), 2000)
     return () => window.clearTimeout(timeoutId)
   }, [error])
+
+  useEffect(() => {
+    if (!successMessage) {
+      return undefined
+    }
+
+    const timeoutId = window.setTimeout(() => setSuccessMessage(null), 2000)
+    return () => window.clearTimeout(timeoutId)
+  }, [successMessage])
 
   useEffect(() => {
     if (
@@ -958,9 +1108,116 @@ function App() {
       )
 
       setPlayerColorById(colorById)
+      setSaveName(null)
       setScoreHistory([])
       setIsScoreboardOpen(false)
     })
+  }
+
+  async function handleSaveGame() {
+    if (!game) {
+      return
+    }
+
+    let name = saveName
+
+    if (!name) {
+      const promptedName = window.prompt('Save game as:')
+      name = promptedName?.trim() ?? ''
+
+      if (!name) {
+        setError('Please enter a save name.')
+        return
+      }
+    }
+
+    setIsSaving(true)
+    setError(null)
+    setSuccessMessage(null)
+
+    try {
+      const savedGame = await saveGame(game.id, name, playerColorById, scoreHistory)
+      setSaveName(savedGame.name)
+      setSuccessMessage('Game saved.')
+    } catch (caughtError) {
+      const message =
+        caughtError instanceof Error ? caughtError.message : 'Something went wrong.'
+      setError(message)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function refreshSavedGames() {
+    setIsLoadingSavedGames(true)
+    setError(null)
+
+    try {
+      const summaries = await listSavedGames()
+      setSavedGames(summaries)
+    } catch (caughtError) {
+      const message =
+        caughtError instanceof Error ? caughtError.message : 'Something went wrong.'
+      setError(message)
+    } finally {
+      setIsLoadingSavedGames(false)
+    }
+  }
+
+  function openSavedGames() {
+    setIsSavedGamesOpen(true)
+    void refreshSavedGames()
+  }
+
+  async function handleResumeSavedGame(gameId: string) {
+    setResumingSavedGameId(gameId)
+    setError(null)
+    setSuccessMessage(null)
+
+    try {
+      const savedGame = await loadSavedGame(gameId)
+      setGame(savedGame.game)
+      setPlayerColorById(normalizePlayerColors(savedGame.player_colors))
+      setScoreHistory(savedGame.score_history as ScoreHistoryRound[])
+      setSaveName(savedGame.name)
+      setRevealedPlayerId(null)
+      setPredictionInput('0')
+      setIsScoreboardOpen(false)
+      setIsInstructionsOpen(false)
+      setIsSavedGamesOpen(false)
+    } catch (caughtError) {
+      const message =
+        caughtError instanceof Error ? caughtError.message : 'Something went wrong.'
+      setError(message)
+    } finally {
+      setResumingSavedGameId(null)
+    }
+  }
+
+  async function handleDeleteSavedGame(gameId: string) {
+    const shouldDelete = window.confirm('Delete this saved game?')
+
+    if (!shouldDelete) {
+      return
+    }
+
+    setDeletingSavedGameId(gameId)
+    setError(null)
+    setSuccessMessage(null)
+
+    try {
+      await deleteSavedGame(gameId)
+      setSavedGames((current) =>
+        current.filter((savedGame) => savedGame.id !== gameId),
+      )
+      setSuccessMessage('Saved game deleted.')
+    } catch (caughtError) {
+      const message =
+        caughtError instanceof Error ? caughtError.message : 'Something went wrong.'
+      setError(message)
+    } finally {
+      setDeletingSavedGameId(null)
+    }
   }
 
   function handleStartRound() {
@@ -1011,6 +1268,7 @@ function App() {
   function resetGameState(message?: string) {
     setGame(null)
     setPlayerColorById({})
+    setSaveName(null)
     setRevealedPlayerId(null)
     setScoreHistory([])
     setIsScoreboardOpen(false)
@@ -1104,14 +1362,26 @@ function App() {
     return (
       <main className="app-shell menu-shell">
         {error && <div className="error-toast" role="alert">{error}</div>}
+        {successMessage && (
+          <div className="success-toast" role="status">{successMessage}</div>
+        )}
 
-        <button
-          type="button"
-          className="secondary-button instructions-button"
-          onClick={() => setIsInstructionsOpen(true)}
-        >
-          Instructions
-        </button>
+        <div className="home-actions">
+          <button
+            type="button"
+            className="secondary-button saved-games-button"
+            onClick={openSavedGames}
+          >
+            Saved Games
+          </button>
+          <button
+            type="button"
+            className="secondary-button instructions-button"
+            onClick={() => setIsInstructionsOpen(true)}
+          >
+            Instructions
+          </button>
+        </div>
 
         <section className="menu-card" aria-labelledby="setup-title">
           <div className="menu-heading">
@@ -1218,6 +1488,22 @@ function App() {
         {isInstructionsOpen && (
           <InstructionsModal onClose={() => setIsInstructionsOpen(false)} />
         )}
+        {isSavedGamesOpen && (
+          <SavedGamesModal
+            savedGames={savedGames}
+            isLoading={isLoadingSavedGames}
+            resumingSavedGameId={resumingSavedGameId}
+            deletingSavedGameId={deletingSavedGameId}
+            onClose={() => setIsSavedGamesOpen(false)}
+            onRefresh={refreshSavedGames}
+            onResume={(gameId) => {
+              void handleResumeSavedGame(gameId)
+            }}
+            onDelete={(gameId) => {
+              void handleDeleteSavedGame(gameId)
+            }}
+          />
+        )}
       </main>
     )
   }
@@ -1226,6 +1512,9 @@ function App() {
     return (
       <main className="app-shell game-shell game-over-shell">
         {error && <div className="error-toast" role="alert">{error}</div>}
+        {successMessage && (
+          <div className="success-toast" role="status">{successMessage}</div>
+        )}
 
         <section className="final-results-screen" aria-label="Final game results">
           <CenterResultPanel
@@ -1243,6 +1532,9 @@ function App() {
   return (
     <main className="app-shell game-shell">
       {error && <div className="error-toast" role="alert">{error}</div>}
+      {successMessage && (
+        <div className="success-toast" role="status">{successMessage}</div>
+      )}
 
       <section className="dashboard" aria-label="Wizard game table">
         <div className="turn-banner">
@@ -1254,6 +1546,14 @@ function App() {
             onClick={() => setIsScoreboardOpen((isOpen) => !isOpen)}
           >
             {isScoreboardOpen ? 'Hide Scoreboard' : 'Show Scoreboard'}
+          </button>
+          <button
+            type="button"
+            className="save-game-button"
+            onClick={handleSaveGame}
+            disabled={isLoading || isSaving}
+          >
+            {isSaving ? 'Saving...' : 'Save Game'}
           </button>
           <button
             type="button"
