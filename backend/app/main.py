@@ -12,12 +12,16 @@ from app.engine import (
 )
 from app.exceptions import GameNotFoundError, WizardGameError
 from app.models import GameState, Player
+from app.save_storage import SavedGame, save_storage
 from app.schemas import (
     ChooseTrumpRequest,
     CreateGameRequest,
     GameResponse,
     GenericActionResponse,
     PlayCardRequest,
+    SaveGameRequest,
+    SavedGameResponse,
+    SavedGameSummary,
     SubmitPredictionRequest,
 )
 from app.storage import storage
@@ -42,6 +46,25 @@ def get_game_or_404(game_id: str) -> GameState:
 
 def action_error(exc: WizardGameError) -> HTTPException:
     return HTTPException(status_code=400, detail=str(exc))
+
+
+def saved_game_or_404(game_id: str) -> SavedGame:
+    try:
+        return save_storage.get(game_id)
+    except GameNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+def saved_game_summary(saved_game: SavedGame) -> SavedGameSummary:
+    return SavedGameSummary(
+        id=saved_game.id,
+        name=saved_game.name,
+        player_names=[player.name for player in saved_game.game.players],
+        round_number=saved_game.game.round_number,
+        phase=saved_game.game.phase.value,
+        created_at=saved_game.created_at,
+        updated_at=saved_game.updated_at,
+    )
 
 
 @app.get("/")
@@ -74,6 +97,48 @@ def list_games_route() -> list[GameState]:
 @app.get("/games/{game_id}", response_model=GameResponse)
 def get_game_route(game_id: str) -> GameResponse:
     return GameResponse(game=get_game_or_404(game_id))
+
+
+@app.post("/games/{game_id}/save", response_model=SavedGameResponse)
+def save_game_route(game_id: str, request: SaveGameRequest) -> SavedGameResponse:
+    game = get_game_or_404(game_id)
+    saved_game = SavedGame(
+        id=game.id,
+        name=request.name,
+        game=game,
+        player_colors=request.player_colors,
+        score_history=request.score_history,
+    )
+
+    return SavedGameResponse(saved_game=save_storage.save(saved_game))
+
+
+@app.get("/saved-games", response_model=list[SavedGameSummary])
+def list_saved_games_route() -> list[SavedGameSummary]:
+    return [
+        saved_game_summary(saved_game)
+        for saved_game in save_storage.list_all()
+    ]
+
+
+@app.get("/saved-games/{game_id}", response_model=SavedGameResponse)
+def get_saved_game_route(game_id: str) -> SavedGameResponse:
+    saved_game = saved_game_or_404(game_id)
+    storage.save(saved_game.game)
+    return SavedGameResponse(saved_game=saved_game)
+
+
+@app.delete("/saved-games/{game_id}", response_model=GenericActionResponse)
+def delete_saved_game_route(game_id: str) -> GenericActionResponse:
+    try:
+        save_storage.delete(game_id)
+    except GameNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    return GenericActionResponse(
+        success=True,
+        message="Saved game deleted.",
+    )
 
 
 @app.post("/games/{game_id}/start-round", response_model=GenericActionResponse)
